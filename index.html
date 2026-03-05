@@ -3,554 +3,564 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Digital Grimoire | Tarot & Mysticism</title>
+    <title>THE GRIMOIRE | Ritual Interface</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@200;400;600&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,700;1,300&family=Geist+Mono:wght@100..400&display=swap" rel="stylesheet">
     <style>
         :root {
-            --gold: #C5A059;
-            --gold-light: #F3E5AB;
-            --deep-space: #030308;
-            --void: #0a0a12;
-            --accent: #4a306d;
+            --obsidian: #050505;
+            --copper: #B87333;
+            --oxidized: #4A7C59;
+            --mercury: #E5E5E5;
+            --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
         body {
-            background-color: var(--deep-space);
-            color: var(--gold-light);
-            font-family: 'Montserrat', sans-serif;
-            overflow-x: hidden;
-            scroll-behavior: smooth;
+            background-color: var(--obsidian);
+            color: var(--mercury);
+            font-family: 'Cormorant Garamond', serif;
+            margin: 0;
+            overflow: hidden;
+            cursor: crosshair;
         }
 
-        .serif { font-family: 'Cinzel', serif; letter-spacing: 0.15em; }
-        .italic-serif { font-family: 'Playfair Display', serif; font-style: italic; }
+        /* Allow selection for reading text, but keep mono labels clean */
+        .mono { 
+            font-family: 'Geist Mono', monospace; 
+            text-transform: uppercase; 
+            letter-spacing: 0.2em; 
+            font-size: 0.65rem; 
+            user-select: none;
+        }
 
-        /* --- Background Cosmos --- */
-        .stars-layer {
+        /* Grain Overlay */
+        #grain-canvas {
             position: fixed;
             inset: 0;
+            background-image: var(--grain);
+            opacity: 0.04;
             pointer-events: none;
-            z-index: -1;
+            z-index: 1000;
         }
 
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle var(--d) infinite ease-in-out;
-        }
-
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.1; transform: scale(0.8); }
-            50% { opacity: 0.8; transform: scale(1.2); }
-        }
-
-        .nebula-glow {
+        #three-canvas {
             position: fixed;
-            width: 100vmax;
-            height: 100vmax;
-            background: radial-gradient(circle, rgba(74, 48, 109, 0.15) 0%, transparent 60%);
-            top: -50%; left: -50%;
-            filter: blur(100px);
-            z-index: -2;
-            animation: drift 30s infinite alternate linear;
+            inset: 0;
+            z-index: 1;
         }
 
-        @keyframes drift {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(10%, 10%) rotate(10deg); }
-        }
-
-        /* --- NEW: Interactive Deck Fan & Physics --- */
-        .deck-wrapper {
-            position: relative;
-            height: 450px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            margin-top: 40px;
-            perspective: 1000px;
-        }
-
-        .fan-card {
-            position: absolute;
-            width: 130px;
-            height: 210px;
-            cursor: pointer;
-            transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.5s ease;
-            transform-origin: bottom center;
+        /* Layout */
+        .ui-layer {
+            position: fixed;
+            inset: 0;
             z-index: 10;
-        }
-
-        .fan-card:hover {
-            z-index: 50 !important;
-            filter: drop-shadow(0 0 15px var(--gold));
-        }
-
-        /* The flying animation logic is handled via JS dynamic styles */
-        .fan-card.is-flying {
-            pointer-events: none;
-            z-index: 100 !important;
-        }
-
-        /* --- Selection Slots --- */
-        .selection-slots {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 40px;
-            min-height: 220px;
-        }
-
-        .slot {
-            width: 130px;
-            height: 210px;
-            border: 1px dashed rgba(197, 160, 89, 0.3);
-            border-radius: 12px;
-            position: relative;
+            width: 100vw;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
+            padding: 2rem;
+            box-sizing: border-box;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+            overflow-y: auto;
+            background: radial-gradient(circle at center, transparent, rgba(0,0,0,0.4));
         }
 
-        .slot.active {
-            border-color: var(--gold);
-            background: rgba(197, 160, 89, 0.05);
+        .hidden { 
+            opacity: 0; 
+            pointer-events: none; 
+            transform: translateY(10px);
         }
 
-        .slot-label {
+        /* Ritual Surface */
+        .card-slot {
+            width: 180px;
+            height: 280px;
+            border: 1px solid rgba(184, 115, 51, 0.2);
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .card-physical {
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
             position: absolute;
-            bottom: -30px;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            opacity: 0.4;
+            cursor: pointer;
         }
 
-        /* --- Tarot Card Styling --- */
         .card-inner {
             width: 100%;
             height: 100%;
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        .card-side {
+        .card-front, .card-back {
             position: absolute;
             inset: 0;
             backface-visibility: hidden;
-            border-radius: 12px;
-            border: 1px solid var(--gold);
+            background: #0a0a0a;
+            border: 1px solid var(--copper);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+            padding: 1rem;
         }
 
         .card-back {
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
-            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l2 18 18 2-18 2-2 18-2-18L0 20l18-2z' fill='%23C5A059' fill-opacity='0.1'/%3E%3C/svg%3E");
+            background: linear-gradient(135deg, #111, #050505);
+            border-color: rgba(184, 115, 51, 0.3);
         }
 
-        .card-front {
-            background: #05050a;
-            transform: rotateY(180deg);
-            border: 2px solid var(--gold);
+        .card-front { transform: rotateY(180deg); border: 2px solid var(--copper); box-shadow: 0 0 30px rgba(184, 115, 51, 0.1); }
+
+        .is-flipped .card-inner { transform: rotateY(180deg); }
+
+        /* Sigil Animation */
+        .sigil-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 3s linear forwards;
         }
 
-        .flipped .card-inner { transform: rotateY(180deg); }
+        @keyframes draw { to { stroke-dashoffset: 0; } }
 
-        /* --- UI Components --- */
-        .glass-ui {
-            background: rgba(10, 10, 20, 0.7);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(197, 160, 89, 0.2);
-            border-radius: 20px;
-        }
-
-        .gold-btn {
+        /* Button */
+        .btn-portal {
+            border: 1px solid var(--copper);
+            padding: 1rem 4rem;
             background: transparent;
-            border: 1px solid var(--gold);
-            color: var(--gold);
-            padding: 12px 30px;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            transition: all 0.3s;
+            color: var(--copper);
+            transition: all 0.4s;
             position: relative;
             overflow: hidden;
         }
-
-        .gold-btn:hover:not(:disabled) {
-            background: var(--gold);
-            color: var(--deep-space);
-            box-shadow: 0 0 20px rgba(197, 160, 89, 0.4);
-        }
-        
-        .gold-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
+        .btn-portal:hover {
+            background: var(--copper);
+            color: var(--obsidian);
+            box-shadow: 0 0 40px rgba(184, 115, 51, 0.4);
         }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        /* Nav */
+        .global-nav {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            right: 2rem;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 0.8; } 100% { opacity: 0.3; } }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--copper); opacity: 0.2; }
     </style>
 </head>
-<body class="min-h-screen selection:bg-gold selection:text-deep-space">
+<body>
 
-    <div class="stars-layer" id="stars"></div>
-    <div class="nebula-glow"></div>
+    <div id="grain-canvas"></div>
+    <canvas id="three-canvas"></canvas>
 
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full z-[100] border-b border-white/5 backdrop-blur-md px-8 py-5">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-4 cursor-pointer group" onclick="switchTab('home')">
-                <svg width="32" height="32" viewBox="0 0 100 100" class="text-gold group-hover:rotate-45 transition-transform duration-700">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="50" cy="50" r="10" fill="currentColor"/>
-                </svg>
-                <div class="flex flex-col">
-                    <span class="serif text-lg tracking-[0.3em] font-bold text-white uppercase">Digital Grimoire</span>
-                </div>
+    <!-- Global Nav -->
+    <nav class="global-nav">
+        <div class="flex items-center gap-4 cursor-pointer" onclick="navTo('threshold')">
+            <div id="moon-icon" class="w-6 h-6 border border-copper rounded-full flex items-center justify-center">
+                <div class="w-1 h-1 bg-copper rounded-full"></div>
             </div>
-            
-            <div class="hidden md:flex gap-10 text-[10px] uppercase tracking-[0.2em] font-semibold opacity-70">
-                <button onclick="switchTab('ritual')" class="hover:text-gold hover:opacity-100 transition">Begin Ritual</button>
-                <button onclick="switchTab('grimoire')" class="hover:text-gold hover:opacity-100 transition">Encyclopedia</button>
-            </div>
+            <span class="mono opacity-50">Luminescence: <span id="moon-phase">Waxing</span></span>
+        </div>
+        <div class="flex gap-8">
+            <button onclick="navTo('echoes')" class="mono hover:text-copper transition">Echoes</button>
+            <button onclick="navTo('library')" class="mono hover:text-copper transition">Archetypes</button>
         </div>
     </nav>
 
-    <!-- MAIN CONTENT -->
-    <main class="max-w-6xl mx-auto pt-32 pb-20 px-6">
-        
-        <!-- HOME SECTON -->
-        <section id="home" class="tab-content active text-center py-20">
-            <h1 class="text-7xl md:text-9xl mb-6 italic-serif font-black leading-tight">Touch the <br><span class="text-gold">Infinite</span></h1>
-            <p class="max-w-xl mx-auto text-lg font-extralight opacity-60 mb-12">The veil is thin. Reach into the deck and let the symbols find you.</p>
-            <button onclick="switchTab('ritual')" class="gold-btn rounded-full px-12 py-5">Enter the Sanctuary</button>
-        </section>
+    <!-- UI: THRESHOLD (Home) -->
+    <section id="view-threshold" class="ui-layer">
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <h1 class="text-7xl md:text-[12rem] italic font-light leading-none mb-8 text-center">
+                The <span class="text-copper block md:inline">Grimoire</span>
+            </h1>
+            <p class="max-w-md text-center text-xl opacity-40 font-light mb-12 tracking-wide italic">
+                A digital bridge between ancient archetypes and the silicon void.
+            </p>
+            <button onclick="startJourney()" class="btn-portal mono">Initiate Ritual</button>
+        </div>
+        <div class="flex justify-between items-end mt-8">
+            <span class="mono opacity-20">Ver. 1.0.2 // Finalized Protocol</span>
+            <span class="mono opacity-20">Archetypes are eternal</span>
+        </div>
+    </section>
 
-        <!-- RITUAL SECTION -->
-        <section id="ritual" class="tab-content">
-            <!-- Step 1: Selection Type -->
-            <div id="step-1" class="animate-fade-in">
-                <div class="text-center mb-16">
-                    <h2 class="text-4xl italic-serif mb-4">Choose Your Path</h2>
-                </div>
-                <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                    <div onclick="initRitual('daily')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all text-center">
-                        <span class="text-3xl mb-4 block">✨</span>
-                        <h3 class="serif text-xl mb-2">Daily Guidance</h3>
-                        <p class="text-sm opacity-50">One card to illuminate the immediate moment.</p>
-                    </div>
-                    <div onclick="initRitual('three')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all text-center">
-                        <div class="flex justify-center gap-1 mb-4"><span class="text-xl">🌙</span><span class="text-xl">☀️</span><span class="text-xl">🌑</span></div>
-                        <h3 class="serif text-xl mb-2">Timeline Spread</h3>
-                        <p class="text-sm opacity-50">The flow of Past, Present, and Future potential.</p>
-                    </div>
+    <!-- UI: INCANTATION (Intent) -->
+    <section id="view-incantation" class="ui-layer hidden">
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <label for="intent-input" class="mono text-copper mb-8 pulse">— Whisper your intent —</label>
+            <input type="text" id="intent-input" maxlength="40" autocomplete="off"
+                class="bg-transparent border-b border-copper/30 w-full max-w-4xl py-8 text-4xl md:text-7xl font-light text-center focus:outline-none placeholder:opacity-10 italic" 
+                placeholder="What does the void hide?">
+            <div class="mt-12 flex flex-col md:flex-row gap-4">
+                <button onclick="chooseSpread(1)" class="px-12 py-3 border border-white/10 mono hover:border-copper transition">One (The Spark)</button>
+                <button onclick="chooseSpread(3)" class="px-12 py-3 border border-white/10 mono hover:border-copper transition">Three (The Path)</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI: RITUAL (Drawing) -->
+    <section id="view-ritual" class="ui-layer hidden">
+        <div class="flex flex-col h-full">
+            <div class="mb-12">
+                <h2 id="ritual-title" class="text-4xl italic text-copper">The Spark</h2>
+                <p id="ritual-intent-echo" class="mono opacity-30 mt-2 italic"></p>
+            </div>
+            
+            <div id="ritual-slots" class="flex-1 flex flex-wrap items-center justify-center gap-8 md:gap-12">
+                <!-- Slots generated by JS -->
+            </div>
+
+            <div id="deck-area" class="h-64 flex items-center justify-center relative">
+                <div id="main-deck" class="relative w-44 h-64 border-2 border-copper/10 group cursor-pointer hover:border-copper/40 transition-all">
+                    <div class="absolute inset-2 border border-copper/5"></div>
+                    <div class="absolute inset-0 flex items-center justify-center mono opacity-20 group-hover:opacity-100 transition">Draw</div>
                 </div>
             </div>
 
-            <!-- Step 2: Set Intention -->
-            <div id="step-2" class="hidden text-center max-w-2xl mx-auto py-20">
-                <h2 class="text-3xl serif mb-8">Anchor Your Thought</h2>
-                <textarea id="ritual-focus" placeholder="What truth do you seek?" 
-                    class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white text-lg font-light focus:border-gold transition-all h-32 mb-10"></textarea>
-                <button onclick="startSelection()" class="gold-btn rounded-full px-12">Commence Selection</button>
+            <div id="reveal-container" class="hidden flex justify-center py-8">
+                <button onclick="manifestVision()" class="btn-portal mono">Break the Veil</button>
             </div>
+        </div>
+    </section>
 
-            <!-- Step 3: IMPROVED Interactive Selection -->
-            <div id="step-3" class="hidden">
-                <div class="text-center mb-4">
-                    <h2 class="text-2xl serif text-gold" id="selection-instruction">Pick 1 Card</h2>
-                    <p class="text-[10px] opacity-40 uppercase tracking-widest">Trust the pull of your intuition</p>
+    <!-- UI: VISION (Results) -->
+    <section id="view-vision" class="ui-layer hidden">
+        <div class="max-w-6xl mx-auto py-20 w-full">
+            <div class="flex flex-col md:flex-row gap-12 md:gap-20 items-center mb-32">
+                <div id="generated-sigil" class="w-48 h-48 md:w-64 md:h-64 border border-copper/20 p-4 shrink-0">
+                    <!-- SVG Sigil Generated Here -->
                 </div>
-
-                <!-- The Interactive Deck Fan -->
-                <div id="card-fan-area" class="deck-wrapper">
-                    <!-- Fan cards injected here -->
-                </div>
-
-                <!-- The Target Slots -->
-                <div id="selection-slots" class="selection-slots">
-                    <!-- Slots injected here -->
-                </div>
-
-                <div class="text-center mt-12">
-                    <button id="confirm-ritual" onclick="revealAltar()" class="gold-btn rounded-full px-12 opacity-0 pointer-events-none transition-all duration-700">Reveal the Arcana</button>
+                <div>
+                    <h2 class="text-5xl md:text-7xl italic mb-4">The Manifested</h2>
+                    <p id="vision-intent" class="text-2xl md:text-3xl font-light opacity-60 italic mb-8"></p>
+                    <div class="h-1 w-20 bg-copper"></div>
                 </div>
             </div>
-
-            <!-- Step 4: The Altar Reveal -->
-            <div id="step-4" class="hidden">
-                <div id="reveal-area" class="flex flex-wrap justify-center gap-12 py-10"></div>
-                <div id="altar-interpretation" class="max-w-4xl mx-auto glass-ui p-12 mt-12 hidden opacity-0 transition-opacity duration-1000">
-                    <h3 class="text-2xl italic-serif gold-text mb-6 pb-6 border-b border-gold/20">The Seer's Word</h3>
-                    <div id="interpretation-content" class="space-y-6 font-light leading-relaxed"></div>
-                    <div class="mt-12 text-center"><button onclick="switchTab('ritual')" class="gold-btn rounded-full text-xs">Return to Sanctuary</button></div>
-                </div>
+            
+            <div id="vision-grid" class="space-y-40 pb-40">
+                <!-- Detailed card meanings -->
             </div>
-        </section>
 
-        <!-- ENCYCLOPEDIA -->
-        <section id="grimoire" class="tab-content">
-            <h2 class="text-4xl italic-serif mb-12">The Encyclopedia of Arcana</h2>
-            <div id="grimoire-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6"></div>
-        </section>
-    </main>
+            <div class="flex justify-center pb-20">
+                <button onclick="saveAndReset()" class="btn-portal mono">Dissolve to Echoes</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI: ECHOES (History) -->
+    <section id="view-echoes" class="ui-layer hidden">
+        <div class="max-w-4xl mx-auto py-20 w-full">
+            <h2 class="text-5xl italic mb-12 text-copper">Past Echoes</h2>
+            <div id="echoes-list" class="space-y-12">
+                <!-- History Items -->
+            </div>
+            <div class="mt-20 flex justify-center">
+                <button onclick="navTo('threshold')" class="mono opacity-40 hover:opacity-100 transition">— Return to Threshold —</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI: LIBRARY (Archetypes) -->
+    <section id="view-library" class="ui-layer hidden">
+        <div class="max-w-6xl mx-auto py-20 w-full">
+            <h2 class="text-5xl italic mb-12 text-copper">The Major Arcana</h2>
+            <div id="library-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Archetype List -->
+            </div>
+            <div class="mt-20 flex justify-center pb-20">
+                <button onclick="navTo('threshold')" class="mono opacity-40 hover:opacity-100 transition">— Return to Threshold —</button>
+            </div>
+        </div>
+    </section>
 
     <script>
-        const tarotDeck = [
-            { name: "The Fool", icon: "0", meaning: "New beginnings, spontaneity, and trust in the universe." },
-            { name: "The Magician", icon: "I", meaning: "Manifestation, power, and inspired resourcefulness." },
-            { name: "The High Priestess", icon: "II", meaning: "Intuition, hidden knowledge, and the divine feminine." },
-            { name: "The Empress", icon: "III", meaning: "Abundance, nurturing, nature, and creative force." },
-            { name: "The Emperor", icon: "IV", meaning: "Structure, authority, and protective leadership." },
-            { name: "The Hierophant", icon: "V", meaning: "Tradition, spiritual wisdom, and cultural beliefs." },
-            { name: "The Lovers", icon: "VI", meaning: "Alignment, choice, and deep connection." },
-            { name: "The Chariot", icon: "VII", meaning: "Willpower, control, and victory through determination." },
-            { name: "Strength", icon: "VIII", meaning: "Inner courage, compassion, and gentle persuasion." },
-            { name: "The Hermit", icon: "IX", meaning: "Introspection, solitude, and seeking inner truth." },
-            { name: "Wheel of Fortune", icon: "X", meaning: "Cycles, destiny, and turning points." },
-            { name: "Justice", icon: "XI", meaning: "Balance, truth, and cause and effect." },
-            { name: "The Hanged Man", icon: "XII", meaning: "Surrender, release, and a new perspective." },
-            { name: "Death", icon: "XIII", meaning: "Endings, transition, and major transformation." },
-            { name: "Temperance", icon: "XIV", meaning: "Moderation, alchemy, and harmony." },
-            { name: "The Devil", icon: "XV", meaning: "Shadow, attachment, and material illusion." },
-            { name: "The Tower", icon: "XVI", meaning: "Sudden upheaval, revelation, and chaos." },
-            { name: "The Star", icon: "XVII", meaning: "Hope, inspiration, and spiritual renewal." },
-            { name: "The Moon", icon: "XVIII", meaning: "Illusion, fear, and subconscious depth." },
-            { name: "The Sun", icon: "XIX", meaning: "Radiance, vitality, and clear success." },
-            { name: "Judgement", icon: "XX", meaning: "Awakening, calling, and absolution." },
-            { name: "The World", icon: "XXI", meaning: "Wholeness, completion, and integration." }
+        // --- ARCANA DATA ---
+        const ARCHETYPES = [
+            { name: "The Fool", keys: "Zero / Risk", desc: "A leap into the digital void. New beginnings without fear of the architecture." },
+            { name: "The Magician", keys: "Will / Power", desc: "The user as creator. Raw data transformed into manifestation by pure focus." },
+            { name: "High Priestess", keys: "Insight / Mystery", desc: "The hidden layers of the code. Knowledge that lives between the zeroes and ones." },
+            { name: "The Empress", keys: "Nature / Birth", desc: "Generative abundance. The creative spark that populates the silence." },
+            { name: "The Emperor", keys: "Structure / Order", desc: "The rigid protocols that define reality. Logic as a shield against chaos." },
+            { name: "The Hierophant", keys: "Belief / Tradition", desc: "The legacy of the ancestors. Following the ancient algorithms to safe harbor." },
+            { name: "The Lovers", keys: "Choice / Unity", desc: "The intersection of two streams. Harmony found in the alignment of data." },
+            { name: "The Chariot", keys: "Focus / Victory", desc: "Momentum. Controlling the unruly currents of the digital slipstream." },
+            { name: "Strength", keys: "Courage / Softness", desc: "Mastery of the beast. Persuading the system through patience rather than force." },
+            { name: "The Hermit", keys: "Solitude / Truth", desc: "The offline journey. Finding truth in the places the network cannot reach." },
+            { name: "Wheel of Fortune", keys: "Cycles / Karma", desc: "The loop function. Recognizing that all data eventually returns to its origin." },
+            { name: "Justice", keys: "Truth / Balance", desc: "The checksum. Ensuring the internal logic of the world remains consistent." },
+            { name: "Hanged Man", keys: "Pause / Surrender", desc: "A suspended state. Finding a new perspective by refusing to execute." },
+            { name: "Death", keys: "End / Transition", desc: "The delete key. A necessary clearing to make space for a new installation." },
+            { name: "Temperance", keys: "Flow / Mix", desc: "Alchemy. Blending disparate elements into a singular, stable compound." },
+            { name: "The Devil", keys: "Bondage / Shadow", desc: "The addictive loop. Being trapped in a system of your own making." },
+            { name: "The Tower", keys: "Upheaval / Chaos", desc: "The system crash. A sudden, violent reorganization of existing data." },
+            { name: "The Star", keys: "Hope / Renewal", desc: "The beacon. A signal guiding the traveler through the darkest nodes." },
+            { name: "The Moon", keys: "Fear / Illusion", desc: "The glitch. Mistaking a visual artifact for a profound truth." },
+            { name: "The Sun", keys: "Joy / Vitality", desc: "The clear signal. Perfect transparency and the warmth of understanding." },
+            { name: "Judgement", keys: "Call / Rebirth", desc: "The final audit. Answering a summons from the deepest levels of the OS." },
+            { name: "The World", keys: "Completion / End", desc: "The final frame. Integration of the self into the universal lattice." }
         ];
 
+        // --- STATE ---
         let state = {
-            ritualType: 'daily',
-            requiredCards: 1,
-            selectedCards: []
+            view: 'threshold',
+            intent: '',
+            spreadSize: 1,
+            drawn: [],
+            deck: [],
+            busy: false,
+            scene: null
         };
 
-        // --- INIT STARS ---
-        function createStars() {
-            const container = document.getElementById('stars');
-            for (let i = 0; i < 150; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                star.style.width = Math.random() * 2 + 'px';
-                star.style.height = star.style.width;
-                star.style.left = Math.random() * 100 + '%';
-                star.style.top = Math.random() * 100 + '%';
-                star.style.setProperty('--d', (Math.random() * 4 + 2) + 's');
-                container.appendChild(star);
+        // --- 3D VOID ENGINE ---
+        function initVoid() {
+            const canvas = document.getElementById('three-canvas');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            const count = 1500;
+            const positions = new Float32Array(count * 3);
+            for(let i = 0; i < count; i++) {
+                positions[i*3] = (Math.random() - 0.5) * 40;
+                positions[i*3+1] = (Math.random() - 0.5) * 40;
+                positions[i*3+2] = (Math.random() - 0.5) * 40;
             }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0xB87333,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+            camera.position.z = 12;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                points.rotation.y += 0.0003;
+                points.rotation.x += 0.0001;
+                material.opacity = 0.2 + Math.sin(Date.now() * 0.001) * 0.1;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
         // --- NAVIGATION ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            if (tabId === 'ritual') resetRitual();
-            window.scrollTo(0, 0);
+        function navTo(viewId) {
+            document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewId}`);
+            if(target) target.classList.remove('hidden');
+            state.view = viewId;
+
+            if(viewId === 'echoes') renderEchoes();
+            if(viewId === 'library') renderLibrary();
         }
 
-        function resetRitual() {
-            state.selectedCards = [];
-            document.getElementById('step-1').classList.remove('hidden');
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('step-3').classList.add('hidden');
-            document.getElementById('step-4').classList.add('hidden');
-            document.getElementById('confirm-ritual').classList.add('opacity-0', 'pointer-events-none');
-        }
+        function startJourney() { navTo('incantation'); }
 
-        function initRitual(type) {
-            state.ritualType = type;
-            state.requiredCards = type === 'daily' ? 1 : 3;
-            document.getElementById('step-1').classList.add('hidden');
-            document.getElementById('step-2').classList.remove('hidden');
-        }
-
-        function startSelection() {
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('step-3').classList.remove('hidden');
-            document.getElementById('selection-instruction').innerText = `Pick ${state.requiredCards} Card${state.requiredCards > 1 ? 's' : ''}`;
+        // --- ECHOES & LIBRARY RENDERING ---
+        function renderEchoes() {
+            const list = document.getElementById('echoes-list');
+            const data = JSON.parse(localStorage.getItem('grimoire_echoes') || '[]');
             
-            generateSlots();
-            generateFan();
+            if(data.length === 0) {
+                list.innerHTML = `<p class="mono opacity-20 italic">No echoes recorded in this timeline.</p>`;
+                return;
+            }
+
+            list.innerHTML = data.map(item => `
+                <div class="border-l border-copper/20 pl-6 py-2">
+                    <span class="mono text-copper/40 text-[10px]">${item.date}</span>
+                    <h4 class="text-2xl italic mb-2">"${item.intent}"</h4>
+                    <p class="mono opacity-60 text-xs">${item.cards.join(' • ')}</p>
+                </div>
+            `).join('');
         }
 
-        function generateSlots() {
-            const container = document.getElementById('selection-slots');
+        function renderLibrary() {
+            const grid = document.getElementById('library-grid');
+            grid.innerHTML = ARCHETYPES.map(arc => `
+                <div class="p-6 border border-white/5 hover:border-copper/20 transition-all group">
+                    <h3 class="text-xl italic mb-1 group-hover:text-copper transition">${arc.name}</h3>
+                    <p class="mono text-[9px] opacity-40 mb-3">${arc.keys}</p>
+                    <p class="text-sm opacity-60 leading-relaxed font-light">${arc.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        // --- RITUAL LOGIC ---
+        function chooseSpread(size) {
+            const input = document.getElementById('intent-input');
+            state.intent = input.value.trim() || "AN UNNAMED HUNGER";
+            state.spreadSize = size;
+            state.deck = [...ARCHETYPES].sort(() => Math.random() - 0.5);
+            state.drawn = [];
+            
+            document.getElementById('ritual-intent-echo').innerText = `"${state.intent}"`;
+            document.getElementById('ritual-title').innerText = size === 1 ? "The Spark" : "The Path";
+            
+            setupRitualSlots(size);
+            navTo('ritual');
+        }
+
+        function setupRitualSlots(size) {
+            const container = document.getElementById('ritual-slots');
             container.innerHTML = '';
-            const labels = state.ritualType === 'three' ? ['Past', 'Present', 'Future'] : ['The Essence'];
-            
-            labels.forEach(l => {
+            for(let i = 0; i < size; i++) {
                 const slot = document.createElement('div');
-                slot.className = 'slot';
-                slot.innerHTML = `<span class="slot-label">${l}</span>`;
+                slot.className = "card-slot flex items-center justify-center mono opacity-20 text-[10px]";
+                slot.id = `slot-${i}`;
+                slot.innerHTML = `Vessel ${i+1}`;
                 container.appendChild(slot);
-            });
+            }
+            document.getElementById('main-deck').onclick = drawCard;
         }
 
-        function generateFan() {
-            const area = document.getElementById('card-fan-area');
-            area.innerHTML = '';
-            const cardCount = 20; // Visual cards in deck
+        function drawCard() {
+            if (state.busy || state.drawn.length >= state.spreadSize) return;
+            state.busy = true;
+
+            const cardData = state.deck.pop();
+            const isReversed = Math.random() > 0.8;
+            const drawIndex = state.drawn.length;
             
-            for (let i = 0; i < cardCount; i++) {
-                const angle = (i - (cardCount / 2)) * 5;
-                const fanCard = document.createElement('div');
-                fanCard.className = 'fan-card';
-                fanCard.dataset.index = i;
-                
-                // Initial fan position
-                fanCard.style.transform = `rotate(${angle}deg) translateY(0px)`;
-                
-                fanCard.innerHTML = `<div class="card-inner"><div class="card-side card-back"></div></div>`;
-                
-                // Add Hover Displacement Logic
-                fanCard.onmouseenter = () => displaceNeighbors(i, cardCount, true);
-                fanCard.onmouseleave = () => displaceNeighbors(i, cardCount, false);
-                
-                fanCard.onclick = (e) => handleCardClick(fanCard, e);
-                area.appendChild(fanCard);
+            state.drawn.push({ ...cardData, isReversed });
+
+            const slot = document.getElementById(`slot-${drawIndex}`);
+            slot.innerHTML = `
+                <div class="card-physical" id="card-${drawIndex}">
+                    <div class="card-inner">
+                        <div class="card-back"></div>
+                        <div class="card-front ${isReversed ? 'rotate-180' : ''}">
+                            <div class="mono text-copper text-[8px] mb-2">${drawIndex + 1}</div>
+                            <div class="flex-1 flex items-center justify-center text-center italic text-xl">
+                                ${cardData.name}
+                            </div>
+                            <div class="mono opacity-30 text-[8px] text-right">${isReversed ? 'Reversed' : 'Upright'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const el = document.getElementById(`card-${drawIndex}`);
+                if(el) el.classList.add('is-flipped');
+                slot.classList.remove('opacity-20');
+                slot.style.borderColor = 'var(--copper)';
+                state.busy = false;
+            }, 150);
+
+            if (state.drawn.length === state.spreadSize) {
+                document.getElementById('deck-area').classList.add('hidden');
+                document.getElementById('reveal-container').classList.remove('hidden');
             }
         }
 
-        function displaceNeighbors(index, total, active) {
-            const cards = document.querySelectorAll('.fan-card:not(.is-flying)');
-            cards.forEach(card => {
-                const i = parseInt(card.dataset.index);
-                const baseAngle = (i - (total / 2)) * 5;
+        function generateSigil(text) {
+            const seed = text.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+            const container = document.getElementById('generated-sigil');
+            
+            let paths = '';
+            const pointsCount = 6;
+            for(let i = 0; i < pointsCount; i++) {
+                const angle = (i / pointsCount) * Math.PI * 2;
+                const r = 15 + (seed % 30);
+                const x = 50 + Math.cos(angle) * r;
+                const y = 50 + Math.sin(angle) * r;
                 
-                if (active) {
-                    if (i === index) {
-                        card.style.transform = `rotate(${baseAngle}deg) translateY(-60px) scale(1.15)`;
-                    } else {
-                        const shift = i < index ? -8 : 8;
-                        card.style.transform = `rotate(${baseAngle + shift}deg) translateY(0px)`;
-                    }
-                } else {
-                    card.style.transform = `rotate(${baseAngle}deg) translateY(0px)`;
-                }
-            });
+                const nextAngle = ((i + 2) % pointsCount / pointsCount) * Math.PI * 2;
+                const nx = 50 + Math.cos(nextAngle) * r;
+                const ny = 50 + Math.sin(nextAngle) * r;
+                
+                paths += `<line x1="${x}" y1="${y}" x2="${nx}" y2="${ny}" stroke="#B87333" stroke-width="0.5" class="sigil-path" />`;
+            }
+
+            container.innerHTML = `
+                <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#B87333" stroke-width="0.1" opacity="0.2" />
+                    <circle cx="50" cy="50" r="1" fill="#B87333" />
+                    ${paths}
+                </svg>
+            `;
         }
 
-        function handleCardClick(cardEl, e) {
-            if (state.selectedCards.length >= state.requiredCards) return;
-            if (cardEl.classList.contains('is-flying')) return;
-
-            const slotIndex = state.selectedCards.length;
-            const slots = document.querySelectorAll('.slot');
-            const targetSlot = slots[slotIndex];
-
-            // 1. Mark as selected and flying
-            cardEl.classList.add('is-flying');
+        function manifestVision() {
+            navTo('vision');
+            document.getElementById('vision-intent').innerText = state.intent;
+            generateSigil(state.intent);
             
-            // 2. Assign data
-            const randomCard = tarotDeck[Math.floor(Math.random() * tarotDeck.length)];
-            state.selectedCards.push(randomCard);
-
-            // 3. Animation: Calculate flight path
-            const startRect = cardEl.getBoundingClientRect();
-            const endRect = targetSlot.getBoundingClientRect();
-
-            const deltaX = endRect.left - startRect.left;
-            const deltaY = endRect.top - startRect.top;
-
-            // Apply flight styles
-            cardEl.style.zIndex = "1000";
-            cardEl.style.transition = "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)";
-            cardEl.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(0deg) scale(1)`;
-
-            // Update slot status
-            setTimeout(() => {
-                targetSlot.classList.add('active');
-                targetSlot.innerHTML += `
-                    <div class="absolute inset-0 flex items-center justify-center animate-fade-in">
-                        <span class="text-2xl text-gold opacity-30">✨</span>
-                    </div>
-                `;
-                
-                if (state.selectedCards.length === state.requiredCards) {
-                    const btn = document.getElementById('confirm-ritual');
-                    btn.classList.remove('opacity-0', 'pointer-events-none');
-                } else {
-                    document.getElementById('selection-instruction').innerText = `Pick ${state.requiredCards - state.selectedCards.length} more`;
-                }
-            }, 800);
-        }
-
-        function revealAltar() {
-            document.getElementById('step-3').classList.add('hidden');
-            document.getElementById('step-4').classList.remove('hidden');
-            
-            const area = document.getElementById('reveal-area');
-            area.innerHTML = '';
-
-            state.selectedCards.forEach((card, idx) => {
-                const label = state.ritualType === 'three' ? (['Past', 'Present', 'Future'][idx]) : 'The Essence';
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'flex flex-col items-center animate-fade-in';
-                cardDiv.style.animationDelay = `${idx * 0.3}s`;
-                cardDiv.innerHTML = `
-                    <span class="text-[10px] uppercase tracking-widest text-gold/60 mb-6 font-bold">${label}</span>
-                    <div class="card-container" style="width:180px; height:280px; perspective:1000px">
-                        <div class="card-inner w-full h-full relative">
-                            <div class="card-side card-back"></div>
-                            <div class="card-side card-front">
-                                <span class="text-4xl mb-4 gold-text serif">${card.icon}</span>
-                                <h4 class="text-lg font-bold mb-2 serif">${card.name}</h4>
-                                <p class="text-[10px] opacity-70 px-4 text-center italic font-light">${card.meaning}</p>
-                            </div>
+            const grid = document.getElementById('vision-grid');
+            grid.innerHTML = state.drawn.map((card, i) => `
+                <div class="flex flex-col md:flex-row gap-12 md:gap-20 items-start md:items-center">
+                    <div class="w-44 h-64 border-2 border-copper p-1 shrink-0 ${card.isReversed ? 'rotate-180' : ''} shadow-lg shadow-copper/5">
+                        <div class="w-full h-full bg-copper/5 flex items-center justify-center text-center p-4 italic text-2xl">
+                            ${card.name}
                         </div>
                     </div>
-                `;
-                area.appendChild(cardDiv);
-                
-                setTimeout(() => {
-                    cardDiv.querySelector('.card-inner').style.transform = 'rotateY(180deg)';
-                }, 1000 + (idx * 500));
-            });
-
-            setTimeout(() => {
-                const panel = document.getElementById('altar-interpretation');
-                const content = document.getElementById('interpretation-content');
-                panel.classList.remove('hidden');
-                setTimeout(() => panel.classList.add('opacity-100'), 50);
-                
-                if (state.ritualType === 'daily') {
-                    content.innerHTML = `<p class="text-lg">The <strong>${state.selectedCards[0].name}</strong> calls to you. It speaks of ${state.selectedCards[0].meaning.toLowerCase()}. Reflect on how this energy can serve your intention today.</p>`;
-                } else {
-                    content.innerHTML = `
-                        <p><strong>Past Roots:</strong> Your journey was shaped by ${state.selectedCards[0].name}, signifying ${state.selectedCards[0].meaning.toLowerCase()}.</p>
-                        <p><strong>Present State:</strong> Currently, ${state.selectedCards[1].name} is active, bringing ${state.selectedCards[1].meaning.toLowerCase()}.</p>
-                        <p><strong>Future Potential:</strong> The horizon holds ${state.selectedCards[2].name}, promising ${state.selectedCards[2].meaning.toLowerCase()}.</p>
-                    `;
-                }
-            }, 2500);
+                    <div class="flex-1">
+                        <span class="mono text-copper mb-4 block">— Aspect No. ${i+1} —</span>
+                        <h3 class="text-4xl md:text-5xl italic mb-6">${card.name} ${card.isReversed ? '<span class="text-xl align-middle opacity-40 ml-4 font-mono uppercase not-italic">(Rev)</span>' : ''}</h3>
+                        <p class="mono opacity-40 mb-8 tracking-[0.4em]">${card.keys}</p>
+                        <p class="text-xl md:text-2xl font-light leading-relaxed max-w-2xl opacity-80">
+                            ${card.desc} ${card.isReversed ? "This archetype is manifesting in shadows, requiring you to look at internal blockage rather than external result." : "The archetype is clear, urging direct alignment with your stated intent."}
+                        </p>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function loadGrimoire() {
-            const grid = document.getElementById('grimoire-grid');
-            tarotDeck.forEach(c => {
-                const d = document.createElement('div');
-                d.className = 'glass-ui p-6 text-center hover:border-gold transition-all cursor-help';
-                d.innerHTML = `<div class="text-2xl mb-4 gold-text">${c.icon}</div><h5 class="text-[10px] font-bold uppercase tracking-widest mb-1">${c.name}</h5>`;
-                grid.appendChild(d);
+        function saveAndReset() {
+            const echoes = JSON.parse(localStorage.getItem('grimoire_echoes') || '[]');
+            echoes.unshift({
+                intent: state.intent,
+                cards: state.drawn.map(c => c.name),
+                date: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
             });
+            localStorage.setItem('grimoire_echoes', JSON.stringify(echoes.slice(0, 15)));
+            
+            // CRITICAL RESET
+            state.drawn = [];
+            state.deck = [];
+            state.intent = '';
+            state.busy = false;
+            
+            document.getElementById('intent-input').value = '';
+            document.getElementById('deck-area').classList.remove('hidden');
+            document.getElementById('reveal-container').classList.add('hidden');
+            navTo('threshold');
         }
 
         window.onload = () => {
-            createStars();
-            loadGrimoire();
+            initVoid();
+            const phases = ["New Moon", "Waxing Crescent", "Full Moon", "Waning Gibbous"];
+            document.getElementById('moon-phase').innerText = phases[new Date().getDate() % 4];
         };
     </script>
 </body>
