@@ -62,35 +62,72 @@
             to { transform: translate(10%, 10%) rotate(10deg); }
         }
 
-        /* --- Interactive Card Fan --- */
-        .deck-fan {
+        /* --- NEW: Interactive Deck Fan & Physics --- */
+        .deck-wrapper {
+            position: relative;
+            height: 450px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 400px;
-            position: relative;
-            margin-top: 50px;
+            align-items: flex-end;
+            margin-top: 40px;
+            perspective: 1000px;
         }
 
         .fan-card {
             position: absolute;
-            width: 140px;
-            height: 220px;
+            width: 130px;
+            height: 210px;
             cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.5s ease;
             transform-origin: bottom center;
+            z-index: 10;
         }
 
         .fan-card:hover {
-            transform: translateY(-40px) scale(1.1) !important;
-            z-index: 100 !important;
+            z-index: 50 !important;
             filter: drop-shadow(0 0 15px var(--gold));
         }
 
-        .fan-card.selected {
-            opacity: 0;
+        /* The flying animation logic is handled via JS dynamic styles */
+        .fan-card.is-flying {
             pointer-events: none;
-            transform: translateY(-200px) scale(0) !important;
+            z-index: 100 !important;
+        }
+
+        /* --- Selection Slots --- */
+        .selection-slots {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            min-height: 220px;
+        }
+
+        .slot {
+            width: 130px;
+            height: 210px;
+            border: 1px dashed rgba(197, 160, 89, 0.3);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .slot.active {
+            border-color: var(--gold);
+            background: rgba(197, 160, 89, 0.05);
+        }
+
+        .slot-label {
+            position: absolute;
+            bottom: -30px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.4;
         }
 
         /* --- Tarot Card Styling --- */
@@ -150,25 +187,19 @@
             overflow: hidden;
         }
 
-        .gold-btn:hover {
+        .gold-btn:hover:not(:disabled) {
             background: var(--gold);
             color: var(--deep-space);
             box-shadow: 0 0 20px rgba(197, 160, 89, 0.4);
         }
-
-        .step-transition {
-            animation: slideUp 0.6s ease-out forwards;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        
+        .gold-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
-        input:focus { outline: none; border-color: var(--gold) !important; }
     </style>
 </head>
 <body class="min-h-screen selection:bg-gold selection:text-deep-space">
@@ -177,190 +208,144 @@
     <div class="nebula-glow"></div>
 
     <!-- Navigation -->
-    <nav class="fixed top-0 w-full z-50 border-b border-white/5 backdrop-blur-md px-8 py-5">
+    <nav class="fixed top-0 w-full z-[100] border-b border-white/5 backdrop-blur-md px-8 py-5">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-4 cursor-pointer group" onclick="switchTab('home')">
                 <svg width="32" height="32" viewBox="0 0 100 100" class="text-gold group-hover:rotate-45 transition-transform duration-700">
                     <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <path d="M50 5 L50 95 M5 50 L95 50" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-                    <path d="M20 20 L80 80 M80 20 L20 80" stroke="currentColor" stroke-width="1" opacity="0.3"/>
                     <circle cx="50" cy="50" r="10" fill="currentColor"/>
                 </svg>
                 <div class="flex flex-col">
-                    <span class="serif text-lg tracking-[0.3em] font-bold text-white">THE DIGITAL GRIMOIRE</span>
-                    <span class="text-[9px] uppercase tracking-[0.4em] opacity-40">Illuminating the unseen</span>
+                    <span class="serif text-lg tracking-[0.3em] font-bold text-white uppercase">Digital Grimoire</span>
                 </div>
             </div>
             
             <div class="hidden md:flex gap-10 text-[10px] uppercase tracking-[0.2em] font-semibold opacity-70">
                 <button onclick="switchTab('ritual')" class="hover:text-gold hover:opacity-100 transition">Begin Ritual</button>
                 <button onclick="switchTab('grimoire')" class="hover:text-gold hover:opacity-100 transition">Encyclopedia</button>
-                <button onclick="switchTab('journal')" class="hover:text-gold hover:opacity-100 transition">Journal</button>
             </div>
         </div>
     </nav>
 
-    <!-- CONTENT -->
+    <!-- MAIN CONTENT -->
     <main class="max-w-6xl mx-auto pt-32 pb-20 px-6">
         
         <!-- HOME SECTON -->
-        <section id="home" class="tab-content active text-center py-20 animate-fade-in">
-            <h1 class="text-7xl md:text-9xl mb-6 italic-serif font-black leading-tight">The Universe <br>is <span class="text-gold">Calling</span></h1>
-            <p class="max-w-xl mx-auto text-lg font-extralight opacity-60 mb-12">Step into the void and draw upon the ancient archetypes that shape your reality. The cards do not dictate; they reveal.</p>
-            <div class="flex flex-wrap justify-center gap-4">
-                <button onclick="switchTab('ritual')" class="gold-btn rounded-full px-12 py-5">Begin A Reading</button>
-                <button onclick="switchTab('grimoire')" class="px-8 py-5 text-[10px] uppercase tracking-[0.3em] hover:text-gold transition">Explore the Arcana</button>
-            </div>
+        <section id="home" class="tab-content active text-center py-20">
+            <h1 class="text-7xl md:text-9xl mb-6 italic-serif font-black leading-tight">Touch the <br><span class="text-gold">Infinite</span></h1>
+            <p class="max-w-xl mx-auto text-lg font-extralight opacity-60 mb-12">The veil is thin. Reach into the deck and let the symbols find you.</p>
+            <button onclick="switchTab('ritual')" class="gold-btn rounded-full px-12 py-5">Enter the Sanctuary</button>
         </section>
 
-        <!-- RITUAL SECTION (The Core Experience) -->
+        <!-- RITUAL SECTION -->
         <section id="ritual" class="tab-content">
             <!-- Step 1: Selection Type -->
-            <div id="step-1" class="step-transition">
+            <div id="step-1" class="animate-fade-in">
                 <div class="text-center mb-16">
-                    <h2 class="text-4xl italic-serif mb-4">Choose Your Ritual</h2>
-                    <p class="opacity-40 uppercase tracking-widest text-xs">How deeply do you wish to see?</p>
+                    <h2 class="text-4xl italic-serif mb-4">Choose Your Path</h2>
                 </div>
                 <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                    <div onclick="initRitual('daily')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all">
-                        <span class="text-3xl mb-4 block group-hover:scale-110 transition">✨</span>
+                    <div onclick="initRitual('daily')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all text-center">
+                        <span class="text-3xl mb-4 block">✨</span>
                         <h3 class="serif text-xl mb-2">Daily Guidance</h3>
-                        <p class="text-sm opacity-50">A single card to anchor your day and provide immediate focus.</p>
+                        <p class="text-sm opacity-50">One card to illuminate the immediate moment.</p>
                     </div>
-                    <div onclick="initRitual('three')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all">
-                        <div class="flex gap-1 mb-4">
-                            <span class="text-xl">🌙</span><span class="text-xl">☀️</span><span class="text-xl">🌑</span>
-                        </div>
+                    <div onclick="initRitual('three')" class="glass-ui p-10 cursor-pointer group hover:border-gold transition-all text-center">
+                        <div class="flex justify-center gap-1 mb-4"><span class="text-xl">🌙</span><span class="text-xl">☀️</span><span class="text-xl">🌑</span></div>
                         <h3 class="serif text-xl mb-2">Timeline Spread</h3>
-                        <p class="text-sm opacity-50">Explore the flow of time: Past influences, Present state, and Future potential.</p>
+                        <p class="text-sm opacity-50">The flow of Past, Present, and Future potential.</p>
                     </div>
                 </div>
             </div>
 
             <!-- Step 2: Set Intention -->
-            <div id="step-2" class="step-transition hidden text-center max-w-2xl mx-auto py-20">
-                <h2 class="text-3xl serif mb-8">Set Your Focus</h2>
-                <p class="text-sm opacity-50 mb-10">Hold a question or a situation in your mind. Typing it out helps anchor your intention to the digital spirits.</p>
-                <textarea id="ritual-focus" placeholder="What does the universe need to tell me about..." 
-                    class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white text-lg font-light focus:border-gold transition-all h-32"></textarea>
-                <button onclick="startSelection()" class="gold-btn mt-10 rounded-full px-12">Commit to the Ritual</button>
+            <div id="step-2" class="hidden text-center max-w-2xl mx-auto py-20">
+                <h2 class="text-3xl serif mb-8">Anchor Your Thought</h2>
+                <textarea id="ritual-focus" placeholder="What truth do you seek?" 
+                    class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white text-lg font-light focus:border-gold transition-all h-32 mb-10"></textarea>
+                <button onclick="startSelection()" class="gold-btn rounded-full px-12">Commence Selection</button>
             </div>
 
-            <!-- Step 3: Card Selection Fan -->
-            <div id="step-3" class="step-transition hidden">
-                <div class="text-center mb-10">
+            <!-- Step 3: IMPROVED Interactive Selection -->
+            <div id="step-3" class="hidden">
+                <div class="text-center mb-4">
                     <h2 class="text-2xl serif text-gold" id="selection-instruction">Pick 1 Card</h2>
-                    <p class="text-[10px] opacity-40 uppercase tracking-widest">Select the cards that call to your intuition</p>
+                    <p class="text-[10px] opacity-40 uppercase tracking-widest">Trust the pull of your intuition</p>
                 </div>
-                <div id="card-fan-area" class="deck-fan">
-                    <!-- Cards dynamically generated here -->
+
+                <!-- The Interactive Deck Fan -->
+                <div id="card-fan-area" class="deck-wrapper">
+                    <!-- Fan cards injected here -->
+                </div>
+
+                <!-- The Target Slots -->
+                <div id="selection-slots" class="selection-slots">
+                    <!-- Slots injected here -->
+                </div>
+
+                <div class="text-center mt-12">
+                    <button id="confirm-ritual" onclick="revealAltar()" class="gold-btn rounded-full px-12 opacity-0 pointer-events-none transition-all duration-700">Reveal the Arcana</button>
                 </div>
             </div>
 
             <!-- Step 4: The Altar Reveal -->
-            <div id="step-4" class="step-transition hidden">
-                <div id="reveal-area" class="flex flex-wrap justify-center gap-12 py-10 min-h-[400px]">
-                    <!-- Selected cards land here -->
-                </div>
-                
+            <div id="step-4" class="hidden">
+                <div id="reveal-area" class="flex flex-wrap justify-center gap-12 py-10"></div>
                 <div id="altar-interpretation" class="max-w-4xl mx-auto glass-ui p-12 mt-12 hidden opacity-0 transition-opacity duration-1000">
-                    <div class="flex justify-between items-center mb-8 border-b border-gold/20 pb-6">
-                        <h3 class="text-2xl italic-serif gold-text">The Oracle's Reflection</h3>
-                        <span id="display-intention" class="text-xs italic opacity-40"></span>
-                    </div>
-                    <div id="interpretation-content" class="space-y-8 font-light leading-relaxed text-lg">
-                        <!-- Content -->
-                    </div>
-                    <div class="mt-12 text-center pt-10">
-                        <button onclick="switchTab('ritual')" class="gold-btn rounded-full text-xs">Close Ritual</button>
-                    </div>
+                    <h3 class="text-2xl italic-serif gold-text mb-6 pb-6 border-b border-gold/20">The Seer's Word</h3>
+                    <div id="interpretation-content" class="space-y-6 font-light leading-relaxed"></div>
+                    <div class="mt-12 text-center"><button onclick="switchTab('ritual')" class="gold-btn rounded-full text-xs">Return to Sanctuary</button></div>
                 </div>
             </div>
         </section>
 
-        <!-- GRIMOIRE SECTION -->
+        <!-- ENCYCLOPEDIA -->
         <section id="grimoire" class="tab-content">
-            <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
-                <div>
-                    <h2 class="text-4xl italic-serif mb-2">The Digital Grimoire</h2>
-                    <p class="opacity-40 font-light">An archive of archetypes and cosmic currents.</p>
-                </div>
-                <input type="text" id="grimoire-search" onkeyup="filterGrimoire()" placeholder="Search by name or keyword..." 
-                    class="bg-white/5 border border-white/10 rounded-full px-8 py-3 text-sm focus:border-gold w-full md:w-80">
-            </div>
-            <div id="grimoire-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                <!-- Injected via JS -->
-            </div>
+            <h2 class="text-4xl italic-serif mb-12">The Encyclopedia of Arcana</h2>
+            <div id="grimoire-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6"></div>
         </section>
-
-        <!-- JOURNAL SECTION -->
-        <section id="journal" class="tab-content text-center py-20">
-            <div class="glass-ui p-20 max-w-2xl mx-auto relative overflow-hidden">
-                <div class="absolute -top-10 -right-10 opacity-5 pointer-events-none">
-                    <svg width="300" height="300" viewBox="0 0 100 100" fill="currentColor"><path d="M50 0 L100 50 L50 100 L0 50 Z"/></svg>
-                </div>
-                <h2 class="text-4xl italic-serif mb-6">The Seer's Journal</h2>
-                <p class="opacity-50 mb-10 font-light">A personal record of your spiritual evolution. Sync with the stars to preserve your journey.</p>
-                <div class="flex justify-center gap-4">
-                    <button class="gold-btn rounded-full px-10 opacity-40 cursor-not-allowed">Sign In to Sync</button>
-                </div>
-                <div class="mt-16 pt-10 border-t border-white/5 grid grid-cols-3 opacity-30 text-[10px] uppercase tracking-widest">
-                    <div>12 Readings</div>
-                    <div>New Moon</div>
-                    <div>4 Archive Logs</div>
-                </div>
-            </div>
-        </section>
-
     </main>
-
-    <!-- FOOTER -->
-    <footer class="py-20 border-t border-white/5 text-center opacity-30 text-[10px] tracking-[0.5em] uppercase">
-        <p>&copy; 2024 DIGITAL GRIMOIRE &bull; BUILT IN THE VOID</p>
-    </footer>
 
     <script>
         const tarotDeck = [
-            { name: "The Fool", icon: "0", meaning: "A leap of faith, new beginnings, spontaneity, and potential." },
-            { name: "The Magician", icon: "I", meaning: "Manifestation, inspired action, resourcefulness, and power." },
-            { name: "The High Priestess", icon: "II", meaning: "Intuition, sacred knowledge, subconscious, and divine feminine." },
-            { name: "The Empress", icon: "III", meaning: "Femininity, nature, nurturing, abundance, and fertility." },
-            { name: "The Emperor", icon: "IV", meaning: "Authority, structure, establishment, and fatherhood." },
-            { name: "The Hierophant", icon: "V", meaning: "Tradition, conformity, spiritual wisdom, and institutions." },
-            { name: "The Lovers", icon: "VI", meaning: "Partnership, alignment, choices, and mutual attraction." },
-            { name: "The Chariot", icon: "VII", meaning: "Willpower, victory, determination, and self-assertion." },
-            { name: "Strength", icon: "VIII", meaning: "Inner strength, patience, control, and compassionate power." },
-            { name: "The Hermit", icon: "IX", meaning: "Introspection, soul searching, guidance, and solitude." },
-            { name: "Wheel of Fortune", icon: "X", meaning: "Cycles, luck, turning points, and inevitable change." },
-            { name: "Justice", icon: "XI", meaning: "Fairness, truth, accountability, and balance." },
-            { name: "The Hanged Man", icon: "XII", meaning: "Surrender, new perspective, letting go, and pause." },
-            { name: "Death", icon: "XIII", meaning: "Endings, transformation, transition, and clearing space." },
-            { name: "Temperance", icon: "XIV", meaning: "Moderation, patience, alchemy, and finding balance." },
-            { name: "The Devil", icon: "XV", meaning: "Shadow self, attachment, addiction, and material focus." },
-            { name: "The Tower", icon: "XVI", meaning: "Upheaval, sudden change, chaos, and revelation." },
-            { name: "The Star", icon: "XVII", meaning: "Hope, inspiration, serenity, and spiritual renewal." },
-            { name: "The Moon", icon: "XVIII", meaning: "Fear, anxiety, illusion, and deep subconscious." },
-            { name: "The Sun", icon: "XIX", meaning: "Success, radiance, positivity, and confidence." },
-            { name: "Judgement", icon: "XX", meaning: "Rebirth, absolution, awakening, and calling." },
-            { name: "The World", icon: "XXI", meaning: "Completion, integration, travel, and wholeness." }
+            { name: "The Fool", icon: "0", meaning: "New beginnings, spontaneity, and trust in the universe." },
+            { name: "The Magician", icon: "I", meaning: "Manifestation, power, and inspired resourcefulness." },
+            { name: "The High Priestess", icon: "II", meaning: "Intuition, hidden knowledge, and the divine feminine." },
+            { name: "The Empress", icon: "III", meaning: "Abundance, nurturing, nature, and creative force." },
+            { name: "The Emperor", icon: "IV", meaning: "Structure, authority, and protective leadership." },
+            { name: "The Hierophant", icon: "V", meaning: "Tradition, spiritual wisdom, and cultural beliefs." },
+            { name: "The Lovers", icon: "VI", meaning: "Alignment, choice, and deep connection." },
+            { name: "The Chariot", icon: "VII", meaning: "Willpower, control, and victory through determination." },
+            { name: "Strength", icon: "VIII", meaning: "Inner courage, compassion, and gentle persuasion." },
+            { name: "The Hermit", icon: "IX", meaning: "Introspection, solitude, and seeking inner truth." },
+            { name: "Wheel of Fortune", icon: "X", meaning: "Cycles, destiny, and turning points." },
+            { name: "Justice", icon: "XI", meaning: "Balance, truth, and cause and effect." },
+            { name: "The Hanged Man", icon: "XII", meaning: "Surrender, release, and a new perspective." },
+            { name: "Death", icon: "XIII", meaning: "Endings, transition, and major transformation." },
+            { name: "Temperance", icon: "XIV", meaning: "Moderation, alchemy, and harmony." },
+            { name: "The Devil", icon: "XV", meaning: "Shadow, attachment, and material illusion." },
+            { name: "The Tower", icon: "XVI", meaning: "Sudden upheaval, revelation, and chaos." },
+            { name: "The Star", icon: "XVII", meaning: "Hope, inspiration, and spiritual renewal." },
+            { name: "The Moon", icon: "XVIII", meaning: "Illusion, fear, and subconscious depth." },
+            { name: "The Sun", icon: "XIX", meaning: "Radiance, vitality, and clear success." },
+            { name: "Judgement", icon: "XX", meaning: "Awakening, calling, and absolution." },
+            { name: "The World", icon: "XXI", meaning: "Wholeness, completion, and integration." }
         ];
 
         let state = {
             ritualType: 'daily',
-            intention: '',
-            selectedCards: [],
-            requiredCards: 1
+            requiredCards: 1,
+            selectedCards: []
         };
 
-        // --- BACKGROUND GEN ---
+        // --- INIT STARS ---
         function createStars() {
             const container = document.getElementById('stars');
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < 150; i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
-                const size = Math.random() * 2 + 'px';
-                star.style.width = size;
-                star.style.height = size;
+                star.style.width = Math.random() * 2 + 'px';
+                star.style.height = star.style.width;
                 star.style.left = Math.random() * 100 + '%';
                 star.style.top = Math.random() * 100 + '%';
                 star.style.setProperty('--d', (Math.random() * 4 + 2) + 's');
@@ -372,18 +357,17 @@
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            window.scrollTo({top: 0, behavior: 'smooth'});
             if (tabId === 'ritual') resetRitual();
+            window.scrollTo(0, 0);
         }
 
-        // --- RITUAL FLOW ---
         function resetRitual() {
             state.selectedCards = [];
             document.getElementById('step-1').classList.remove('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-3').classList.add('hidden');
             document.getElementById('step-4').classList.add('hidden');
-            document.getElementById('altar-interpretation').classList.add('hidden', 'opacity-0');
+            document.getElementById('confirm-ritual').classList.add('opacity-0', 'pointer-events-none');
         }
 
         function initRitual(type) {
@@ -394,46 +378,114 @@
         }
 
         function startSelection() {
-            state.intention = document.getElementById('ritual-focus').value || "Guidance for the path ahead";
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-3').classList.remove('hidden');
             document.getElementById('selection-instruction').innerText = `Pick ${state.requiredCards} Card${state.requiredCards > 1 ? 's' : ''}`;
+            
+            generateSlots();
             generateFan();
+        }
+
+        function generateSlots() {
+            const container = document.getElementById('selection-slots');
+            container.innerHTML = '';
+            const labels = state.ritualType === 'three' ? ['Past', 'Present', 'Future'] : ['The Essence'];
+            
+            labels.forEach(l => {
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                slot.innerHTML = `<span class="slot-label">${l}</span>`;
+                container.appendChild(slot);
+            });
         }
 
         function generateFan() {
             const area = document.getElementById('card-fan-area');
             area.innerHTML = '';
-            const cardCount = 18;
+            const cardCount = 20; // Visual cards in deck
             
             for (let i = 0; i < cardCount; i++) {
-                const angle = (i - (cardCount / 2)) * 6;
+                const angle = (i - (cardCount / 2)) * 5;
                 const fanCard = document.createElement('div');
                 fanCard.className = 'fan-card';
-                fanCard.style.transform = `rotate(${angle}deg) translateX(${angle * 2}px)`;
-                fanCard.innerHTML = `
-                    <div class="card-inner w-full h-full">
-                        <div class="card-side card-back"></div>
-                    </div>
-                `;
-                fanCard.onclick = () => selectCard(fanCard, i);
+                fanCard.dataset.index = i;
+                
+                // Initial fan position
+                fanCard.style.transform = `rotate(${angle}deg) translateY(0px)`;
+                
+                fanCard.innerHTML = `<div class="card-inner"><div class="card-side card-back"></div></div>`;
+                
+                // Add Hover Displacement Logic
+                fanCard.onmouseenter = () => displaceNeighbors(i, cardCount, true);
+                fanCard.onmouseleave = () => displaceNeighbors(i, cardCount, false);
+                
+                fanCard.onclick = (e) => handleCardClick(fanCard, e);
                 area.appendChild(fanCard);
             }
         }
 
-        function selectCard(el, index) {
-            if (state.selectedCards.length >= state.requiredCards) return;
-            if (el.classList.contains('selected')) return;
+        function displaceNeighbors(index, total, active) {
+            const cards = document.querySelectorAll('.fan-card:not(.is-flying)');
+            cards.forEach(card => {
+                const i = parseInt(card.dataset.index);
+                const baseAngle = (i - (total / 2)) * 5;
+                
+                if (active) {
+                    if (i === index) {
+                        card.style.transform = `rotate(${baseAngle}deg) translateY(-60px) scale(1.15)`;
+                    } else {
+                        const shift = i < index ? -8 : 8;
+                        card.style.transform = `rotate(${baseAngle + shift}deg) translateY(0px)`;
+                    }
+                } else {
+                    card.style.transform = `rotate(${baseAngle}deg) translateY(0px)`;
+                }
+            });
+        }
 
-            el.classList.add('selected');
+        function handleCardClick(cardEl, e) {
+            if (state.selectedCards.length >= state.requiredCards) return;
+            if (cardEl.classList.contains('is-flying')) return;
+
+            const slotIndex = state.selectedCards.length;
+            const slots = document.querySelectorAll('.slot');
+            const targetSlot = slots[slotIndex];
+
+            // 1. Mark as selected and flying
+            cardEl.classList.add('is-flying');
+            
+            // 2. Assign data
             const randomCard = tarotDeck[Math.floor(Math.random() * tarotDeck.length)];
             state.selectedCards.push(randomCard);
 
-            if (state.selectedCards.length === state.requiredCards) {
-                setTimeout(revealAltar, 800);
-            } else {
-                document.getElementById('selection-instruction').innerText = `Pick ${state.requiredCards - state.selectedCards.length} more`;
-            }
+            // 3. Animation: Calculate flight path
+            const startRect = cardEl.getBoundingClientRect();
+            const endRect = targetSlot.getBoundingClientRect();
+
+            const deltaX = endRect.left - startRect.left;
+            const deltaY = endRect.top - startRect.top;
+
+            // Apply flight styles
+            cardEl.style.zIndex = "1000";
+            cardEl.style.transition = "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)";
+            cardEl.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(0deg) scale(1)`;
+
+            // Update slot status
+            setTimeout(() => {
+                targetSlot.classList.add('active');
+                targetSlot.innerHTML += `
+                    <div class="absolute inset-0 flex items-center justify-center animate-fade-in">
+                        <span class="text-2xl text-gold opacity-30">✨</span>
+                    </div>
+                `;
+                
+                if (state.selectedCards.length === state.requiredCards) {
+                    const btn = document.getElementById('confirm-ritual');
+                    btn.classList.remove('opacity-0', 'pointer-events-none');
+                } else {
+                    document.getElementById('selection-instruction').innerText = `Pick ${state.requiredCards - state.selectedCards.length} more`;
+                }
+            }, 800);
         }
 
         function revealAltar() {
@@ -444,82 +496,55 @@
             area.innerHTML = '';
 
             state.selectedCards.forEach((card, idx) => {
-                const label = state.ritualType === 'three' ? (idx === 0 ? 'Past' : idx === 1 ? 'Present' : 'Future') : 'Today';
+                const label = state.ritualType === 'three' ? (['Past', 'Present', 'Future'][idx]) : 'The Essence';
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'flex flex-col items-center animate-fade-in';
                 cardDiv.style.animationDelay = `${idx * 0.3}s`;
                 cardDiv.innerHTML = `
-                    <span class="text-[9px] uppercase tracking-widest text-gold mb-6 opacity-60 font-bold">${label}</span>
-                    <div class="card-container w-[180px] h-[280px] perspective-[1000px]">
-                        <div class="card-inner w-full h-full relative duration-1000">
+                    <span class="text-[10px] uppercase tracking-widest text-gold/60 mb-6 font-bold">${label}</span>
+                    <div class="card-container" style="width:180px; height:280px; perspective:1000px">
+                        <div class="card-inner w-full h-full relative">
                             <div class="card-side card-back"></div>
                             <div class="card-side card-front">
-                                <span class="text-4xl gold-text serif mb-4">${card.icon}</span>
-                                <h4 class="text-lg font-bold mb-4 serif">${card.name}</h4>
-                                <div class="w-10 h-[1px] bg-gold/30 mb-4"></div>
-                                <p class="text-[10px] text-center opacity-70 px-4">${card.meaning}</p>
+                                <span class="text-4xl mb-4 gold-text serif">${card.icon}</span>
+                                <h4 class="text-lg font-bold mb-2 serif">${card.name}</h4>
+                                <p class="text-[10px] opacity-70 px-4 text-center italic font-light">${card.meaning}</p>
                             </div>
                         </div>
                     </div>
                 `;
                 area.appendChild(cardDiv);
                 
-                // Trigger flip after a delay
                 setTimeout(() => {
                     cardDiv.querySelector('.card-inner').style.transform = 'rotateY(180deg)';
                 }, 1000 + (idx * 500));
             });
 
-            setTimeout(showInterpretations, 2500 + (state.requiredCards * 500));
+            setTimeout(() => {
+                const panel = document.getElementById('altar-interpretation');
+                const content = document.getElementById('interpretation-content');
+                panel.classList.remove('hidden');
+                setTimeout(() => panel.classList.add('opacity-100'), 50);
+                
+                if (state.ritualType === 'daily') {
+                    content.innerHTML = `<p class="text-lg">The <strong>${state.selectedCards[0].name}</strong> calls to you. It speaks of ${state.selectedCards[0].meaning.toLowerCase()}. Reflect on how this energy can serve your intention today.</p>`;
+                } else {
+                    content.innerHTML = `
+                        <p><strong>Past Roots:</strong> Your journey was shaped by ${state.selectedCards[0].name}, signifying ${state.selectedCards[0].meaning.toLowerCase()}.</p>
+                        <p><strong>Present State:</strong> Currently, ${state.selectedCards[1].name} is active, bringing ${state.selectedCards[1].meaning.toLowerCase()}.</p>
+                        <p><strong>Future Potential:</strong> The horizon holds ${state.selectedCards[2].name}, promising ${state.selectedCards[2].meaning.toLowerCase()}.</p>
+                    `;
+                }
+            }, 2500);
         }
 
-        function showInterpretations() {
-            const panel = document.getElementById('altar-interpretation');
-            const content = document.getElementById('interpretation-content');
-            const intentDisplay = document.getElementById('display-intention');
-            
-            intentDisplay.innerText = `Focus: "${state.intention}"`;
-            panel.classList.remove('hidden');
-            setTimeout(() => panel.classList.add('opacity-100'), 10);
-
-            if (state.ritualType === 'daily') {
-                const card = state.selectedCards[0];
-                content.innerHTML = `
-                    <p>Regarding your focus, <strong>${card.name}</strong> has emerged. This suggests that the primary current flowing through your day is one of ${card.meaning.toLowerCase()}</p>
-                    <p class="text-gold italic">Ritual Advice: Meditate on how the energy of ${card.name} can help you resolve your current intentions.</p>
-                `;
-            } else {
-                content.innerHTML = `
-                    <div class="space-y-6">
-                        <p><strong>The Foundation (Past):</strong> ${state.selectedCards[0].name} shows that your path was paved by ${state.selectedCards[0].meaning.toLowerCase()}</p>
-                        <p><strong>The Current (Present):</strong> At this moment, ${state.selectedCards[1].name} indicates you are navigating ${state.selectedCards[1].meaning.toLowerCase()}</p>
-                        <p><strong>The Horizon (Future):</strong> Moving forward, ${state.selectedCards[2].name} signals an upcoming phase of ${state.selectedCards[2].meaning.toLowerCase()}</p>
-                    </div>
-                `;
-            }
-        }
-
-        // --- GRIMOIRE ---
         function loadGrimoire() {
             const grid = document.getElementById('grimoire-grid');
-            grid.innerHTML = '';
-            tarotDeck.forEach(card => {
-                const div = document.createElement('div');
-                div.className = 'glass-ui p-6 text-center group hover:border-gold transition card-item';
-                div.dataset.name = card.name.toLowerCase();
-                div.innerHTML = `
-                    <div class="text-2xl gold-text serif mb-4 group-hover:scale-110 transition-transform">${card.icon}</div>
-                    <h5 class="text-[10px] font-bold uppercase tracking-widest mb-2">${card.name}</h5>
-                    <p class="text-[9px] opacity-40 font-light leading-tight">${card.meaning}</p>
-                `;
-                grid.appendChild(div);
-            });
-        }
-
-        function filterGrimoire() {
-            const query = document.getElementById('grimoire-search').value.toLowerCase();
-            document.querySelectorAll('.card-item').forEach(el => {
-                el.style.display = el.dataset.name.includes(query) ? 'block' : 'none';
+            tarotDeck.forEach(c => {
+                const d = document.createElement('div');
+                d.className = 'glass-ui p-6 text-center hover:border-gold transition-all cursor-help';
+                d.innerHTML = `<div class="text-2xl mb-4 gold-text">${c.icon}</div><h5 class="text-[10px] font-bold uppercase tracking-widest mb-1">${c.name}</h5>`;
+                grid.appendChild(d);
             });
         }
 
